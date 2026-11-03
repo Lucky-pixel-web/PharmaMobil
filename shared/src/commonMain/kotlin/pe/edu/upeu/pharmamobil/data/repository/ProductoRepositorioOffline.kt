@@ -17,6 +17,7 @@ import pe.edu.upeu.pharmamobil.domain.repository.AlmacenSincronizacion
 import pe.edu.upeu.pharmamobil.domain.repository.AlmacenSincronizacionEnMemoria
 import pe.edu.upeu.pharmamobil.domain.repository.ProductoRepository
 import pe.edu.upeu.pharmamobil.domain.util.ahoraEnMilisegundos
+import pe.edu.upeu.pharmamobil.domain.model.EstadoEnvios
 
 class ProductoRepositorioOffline(
     private val local: ProductoLocal,
@@ -30,6 +31,9 @@ class ProductoRepositorioOffline(
 
     override fun observar(): Flow<List<Producto>> =
         local.observar()
+
+    override fun observarEstadoEnvios(): Flow<EstadoEnvios> =
+        local.observarEstadoEnvios(MAX_INTENTOS)
 
     override suspend fun registrar(producto: Producto): Producto {
         val guardado = local.guardarPendiente(producto)

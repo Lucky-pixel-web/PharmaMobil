@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.map
 import pe.edu.upeu.pharmamobil.db.PharmaDb
 import pe.edu.upeu.pharmamobil.domain.model.Producto
 import pe.edu.upeu.pharmamobil.db.Producto as ProductoFila
+import pe.edu.upeu.pharmamobil.domain.model.EstadoEnvios
+import pe.edu.upeu.pharmamobil.domain.model.FalloEnvio
 
 data class ProductoPendiente(
     val producto: Producto,
@@ -31,6 +33,30 @@ class ProductoLocal(base: PharmaDb) {
         consultas.listarPendientes()
             .executeAsList()
             .map { it.aDominio() }
+
+    fun observarEstadoEnvios(maxIntentos: Int): Flow<EstadoEnvios> =
+        consultas.listarPendientes()
+            .asFlow()
+            .mapToList(Dispatchers.Default)
+            .map { filas ->
+
+                val bloqueadas = filas.filter {
+                    it.intentos >= maxIntentos.toLong()
+                }
+
+                EstadoEnvios(
+                    pendientes = filas.size - bloqueadas.size,
+                    fallidas = bloqueadas.size,
+                    detallesFallidos = bloqueadas.map {
+                        FalloEnvio(
+                            id = it.id,
+                            nombre = it.nombre,
+                            motivo = it.ultimoError
+                                ?: "No se recibió el detalle del error"
+                        )
+                    }
+                )
+            }
 
     fun pendientes(maxIntentos: Int): List<ProductoPendiente> =
         consultas.pendientesPorEnviar(maxIntentos.toLong())

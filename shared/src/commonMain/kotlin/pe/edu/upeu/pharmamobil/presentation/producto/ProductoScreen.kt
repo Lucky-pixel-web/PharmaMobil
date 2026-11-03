@@ -49,7 +49,7 @@ import pe.edu.upeu.pharmamobil.presentation.components.MensajeError
 import pe.edu.upeu.pharmamobil.presentation.components.MensajeExito
 import pe.edu.upeu.pharmamobil.presentation.components.ValidatedTextField
 import pe.edu.upeu.pharmamobil.presentation.producto.ProductoUiState.Operacion
-
+import androidx.compose.material3.TextButton
 @Composable
 fun ProductoScreen(
     viewModel: ProductoViewModel,
@@ -103,7 +103,7 @@ fun ProductoScreen(
             onSincronizar = viewModel::sincronizar
         )
 
-        IndicadorAntiguedad(uiState.ultimaSincronizacion)
+        PanelEstadoSincronizacion(uiState)
 
         TabRow(selectedTabIndex = tabSeleccionada) {
             titulosTabs.forEachIndexed { index, titulo ->
@@ -476,6 +476,68 @@ private fun ProductoItem(
                         contentDescription = "Eliminar ${producto.nombre}"
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PanelEstadoSincronizacion(
+    estado: ProductoUiState
+) {
+    var mostrarErrores by remember {
+        mutableStateOf(false)
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+
+        Text(
+            text = when (estado.conectado) {
+                true -> "Internet disponible"
+                false -> "Sin conexión a internet"
+                null -> "Verificando conexión..."
+            },
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Text(
+            text = "Por enviar: ${estado.estadoEnvios.pendientes}" +
+                    " · Fallidas: ${estado.estadoEnvios.fallidas}",
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        IndicadorAntiguedad(
+            estado.ultimaSincronizacion
+        )
+
+        if (estado.estadoEnvios.fallidas > 0) {
+
+            TextButton(
+                onClick = {
+                    mostrarErrores = !mostrarErrores
+                }
+            ) {
+                Text(
+                    if (mostrarErrores)
+                        "Ocultar errores"
+                    else
+                        "Revisar errores"
+                )
+            }
+
+            if (mostrarErrores) {
+                estado.estadoEnvios.detallesFallidos
+                    .take(3)
+                    .forEach { fallo ->
+                        Text(
+                            text = "${fallo.nombre}: ${fallo.motivo}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
             }
         }
     }

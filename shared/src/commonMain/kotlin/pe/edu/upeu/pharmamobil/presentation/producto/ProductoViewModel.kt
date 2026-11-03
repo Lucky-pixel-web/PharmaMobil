@@ -21,6 +21,7 @@ import pe.edu.upeu.pharmamobil.domain.usecase.RegistrarProductoUseCase
 import pe.edu.upeu.pharmamobil.domain.usecase.SincronizarProductosUseCase
 import pe.edu.upeu.pharmamobil.presentation.producto.ProductoUiState.Operacion
 import pe.edu.upeu.pharmamobil.presentation.producto.ProductoUiState.Operacion.Tipo
+import pe.upeu.agrosierra.domain.platform.MonitorConectividad
 
 class ProductoViewModel(
     private val registrarProducto: RegistrarProductoUseCase,
@@ -30,6 +31,8 @@ class ProductoViewModel(
     private val eliminarProducto: EliminarProductoUseCase,
     private val obtenerProducto: ObtenerProductoUseCase,
     private val observarUltimaSincronizacion: ObservarUltimaSincronizacionUseCase,
+    private val monitorConectividad: MonitorConectividad? = null
+
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProductoUiState())
@@ -39,6 +42,8 @@ class ProductoViewModel(
         sincronizar()
         observarLista()
         observarAntiguedad()
+        observarEstadoEnvios()
+        observarConexion()
     }
 
     private fun observarLista() {
@@ -300,6 +305,28 @@ class ProductoViewModel(
                     stockError = campos["stock"]
                 )
             )
+        }
+    }
+
+    private fun observarEstadoEnvios() {
+        viewModelScope.launch {
+            observarProductos.estadoEnvios().collect { datos ->
+                _uiState.update {
+                    it.copy(estadoEnvios = datos)
+                }
+            }
+        }
+    }
+
+    private fun observarConexion() {
+        val monitor = monitorConectividad ?: return
+
+        viewModelScope.launch {
+            monitor.observar().collect { disponible ->
+                _uiState.update {
+                    it.copy(conectado = disponible)
+                }
+            }
         }
     }
 

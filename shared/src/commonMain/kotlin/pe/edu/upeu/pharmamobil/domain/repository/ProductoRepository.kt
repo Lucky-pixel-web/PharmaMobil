@@ -2,6 +2,8 @@ package pe.edu.upeu.pharmamobil.domain.repository
 
 import kotlinx.coroutines.flow.Flow
 import pe.edu.upeu.pharmamobil.domain.model.Producto
+import kotlinx.coroutines.flow.flowOf
+import pe.edu.upeu.pharmamobil.domain.model.EstadoEnvios
 
 interface ProductoRepository {
 
@@ -18,4 +20,8 @@ interface ProductoRepository {
     suspend fun actualizar(producto: Producto): Producto
 
     suspend fun eliminar(id: Long)
+
+    fun observarEstadoEnvios(): Flow<EstadoEnvios> =
+        flowOf(EstadoEnvios())
+
 }

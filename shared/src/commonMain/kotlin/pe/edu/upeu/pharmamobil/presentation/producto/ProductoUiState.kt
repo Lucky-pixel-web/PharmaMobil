@@ -1,5 +1,7 @@
 package pe.edu.upeu.pharmamobil.presentation.producto
 
+import pe.edu.upeu.pharmamobil.domain.model.EstadoEnvios
+
 data class ProductoUiState(
     val fase: Fase = Fase.Cargando,
     val formulario: FormularioProducto = FormularioProducto(),
@@ -7,7 +9,9 @@ data class ProductoUiState(
     val mensajeExito: String? = null,
     val sincronizando: Boolean = false,
     val avisoRed: String? = null,
-    val ultimaSincronizacion: Long? = null
+    val ultimaSincronizacion: Long? = null,
+    val estadoEnvios: EstadoEnvios = EstadoEnvios(),
+    val conectado: Boolean? = null
 ) {
     sealed interface Fase {
         data object Cargando : Fase

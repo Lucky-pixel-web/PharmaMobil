@@ -45,6 +45,7 @@ import pe.upeu.agrosierra.domain.repository.AgroRepositorio
 import pe.upeu.agrosierra.domain.usecase.BuscarLotesAgroUseCase
 import pe.upeu.agrosierra.domain.usecase.RegistrarLaborAgroUseCase
 import pe.upeu.agrosierra.domain.usecase.SincronizarAgroUseCase
+import pe.upeu.agrosierra.domain.platform.MonitorConectividad
 private const val CATEGORIA_POR_DEFECTO = 21L
 
 val dataModule = module {
@@ -85,7 +86,13 @@ val domainModule = module {
 }
 
 val presentationModule = module {
-    viewModel { ProductoViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel {
+        ProductoViewModel(
+            get(), get(), get(), get(),
+            get(), get(), get(),
+            getOrNull<MonitorConectividad>()
+        )
+    }
     viewModel { ClienteViewModel(get(), get()) }
     viewModel { DetalleProductoViewModel(get(), get()) }
     viewModel { SesionViewModel(get(), get(), get(), get()) }
