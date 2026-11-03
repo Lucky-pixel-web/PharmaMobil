@@ -58,3 +58,9 @@ DELETE FROM producto WHERE id = ?;
 
 siguienteIdLocal:
 SELECT COALESCE(MIN(id), 0) FROM producto;
+
+marcarFallida:
+UPDATE producto
+SET intentos = :maxIntentos,
+    ultimoError = :motivo
+WHERE id = :id;

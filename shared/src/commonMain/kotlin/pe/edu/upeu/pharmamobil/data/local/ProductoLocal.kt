@@ -1,3 +1,4 @@
+
 package pe.edu.upeu.pharmamobil.data.local
 
 import app.cash.sqldelight.coroutines.asFlow
@@ -9,6 +10,11 @@ import pe.edu.upeu.pharmamobil.db.PharmaDb
 import pe.edu.upeu.pharmamobil.domain.model.Producto
 import pe.edu.upeu.pharmamobil.db.Producto as ProductoFila
 
+data class ProductoPendiente(
+    val producto: Producto,
+    val intentos: Int
+)
+
 class ProductoLocal(base: PharmaDb) {
 
     private val consultas = base.productoQueries
@@ -17,20 +23,71 @@ class ProductoLocal(base: PharmaDb) {
         consultas.listarTodos()
             .asFlow()
             .mapToList(Dispatchers.Default)
-            .map { filas -> filas.map { it.aDominio() } }
+            .map { filas ->
+                filas.map { it.aDominio() }
+            }
 
     fun pendientes(): List<Producto> =
-        consultas.listarPendientes().executeAsList()
+        consultas.listarPendientes()
+            .executeAsList()
             .map { it.aDominio() }
+
+    fun pendientes(maxIntentos: Int): List<ProductoPendiente> =
+        consultas.pendientesPorEnviar(maxIntentos.toLong())
+            .executeAsList()
+            .map { fila ->
+                ProductoPendiente(
+                    producto = fila.aDominio(),
+                    intentos = fila.intentos.toInt()
+                )
+            }
 
     fun guardarPendiente(producto: Producto): Producto {
         val menor = consultas.siguienteIdLocal().executeAsOne()
-        val local = producto.copy(id = minOf(menor, 0L) - 1L)
-        consultas.insertar(
-            local.id, local.nombre, local.precio,
-            local.stock.toLong(), if (local.activo) 1L else 0L, 1L
+        val local = producto.copy(
+            id = minOf(menor, 0L) - 1L
         )
+
+        consultas.insertar(
+            local.id,
+            local.nombre,
+            local.precio,
+            local.stock.toLong(),
+            if (local.activo) 1L else 0L,
+            1L
+        )
+
         return local
+    }
+
+    fun sumarIntento(id: Long, motivo: String) {
+        consultas.sumarIntento(motivo, id)
+    }
+
+    fun marcarFallida(
+        id: Long,
+        motivo: String,
+        maxIntentos: Int
+    ) {
+        consultas.marcarFallida(
+            maxIntentos.toLong(),
+            motivo,
+            id
+        )
+    }
+
+    fun contarPendientes(maxIntentos: Int): Long =
+        consultas.contarPendientes(
+            maxIntentos.toLong()
+        ).executeAsOne()
+
+    fun contarFallidas(maxIntentos: Int): Long =
+        consultas.contarFallidas(
+            maxIntentos.toLong()
+        ).executeAsOne()
+
+    fun reiniciarIntentos(id: Long) {
+        consultas.reiniciarIntentos(id)
     }
 
     fun eliminarLocal(id: Long) {
@@ -40,10 +97,15 @@ class ProductoLocal(base: PharmaDb) {
     fun reemplazarSincronizados(productos: List<Producto>) {
         consultas.transaction {
             consultas.borrarSincronizados()
+
             productos.forEach {
                 consultas.insertar(
-                    it.id, it.nombre, it.precio,
-                    it.stock.toLong(), if (it.activo) 1L else 0L, 0L
+                    it.id,
+                    it.nombre,
+                    it.precio,
+                    it.stock.toLong(),
+                    if (it.activo) 1L else 0L,
+                    0L
                 )
             }
         }
