@@ -1,10 +1,13 @@
+
 CREATE TABLE producto (
-    id         INTEGER NOT NULL PRIMARY KEY,
-    nombre     TEXT    NOT NULL,
-    precio     REAL    NOT NULL,
-    stock      INTEGER NOT NULL,
-    activo     INTEGER NOT NULL DEFAULT 1,
-    pendiente  INTEGER NOT NULL DEFAULT 0
+    id INTEGER NOT NULL PRIMARY KEY,
+    nombre TEXT NOT NULL,
+    precio REAL NOT NULL,
+    stock INTEGER NOT NULL,
+    activo INTEGER NOT NULL DEFAULT 1,
+    pendiente INTEGER NOT NULL DEFAULT 0,
+    intentos INTEGER NOT NULL DEFAULT 0,
+    ultimoError TEXT
 );
 
 listarTodos:
@@ -13,8 +16,38 @@ SELECT * FROM producto ORDER BY nombre ASC;
 listarPendientes:
 SELECT * FROM producto WHERE pendiente = 1;
 
+pendientesPorEnviar:
+SELECT * FROM producto
+WHERE pendiente = 1
+AND intentos < :maxIntentos
+ORDER BY id;
+
+contarPendientes:
+SELECT COUNT(*) FROM producto
+WHERE pendiente = 1
+AND intentos < :maxIntentos;
+
+contarFallidas:
+SELECT COUNT(*) FROM producto
+WHERE pendiente = 1
+AND intentos >= :maxIntentos;
+
+sumarIntento:
+UPDATE producto
+SET intentos = intentos + 1,
+    ultimoError = ?
+WHERE id = ?;
+
+reiniciarIntentos:
+UPDATE producto
+SET intentos = 0,
+    ultimoError = NULL
+WHERE id = ?;
+
 insertar:
-INSERT OR REPLACE INTO producto
+INSERT OR REPLACE INTO producto (
+    id, nombre, precio, stock, activo, pendiente
+)
 VALUES (?, ?, ?, ?, ?, ?);
 
 borrarSincronizados:
@@ -24,6 +57,4 @@ borrarPorId:
 DELETE FROM producto WHERE id = ?;
 
 siguienteIdLocal:
--- COALESCE evita el NULL de la tabla vacía; el minOf de Kotlin
--- garantiza que el id resultante sea siempre negativo.
 SELECT COALESCE(MIN(id), 0) FROM producto;
