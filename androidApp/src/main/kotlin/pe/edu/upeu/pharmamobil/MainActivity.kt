@@ -24,12 +24,20 @@ import androidx.compose.ui.unit.dp
 import pe.edu.upeu.pharmamobil.permiso.GestorPermisosAndroid
 import pe.edu.upeu.pharmamobil.permiso.PantallaPermisos
 import pe.edu.upeu.pharmamobil.permiso.PuentePermisos
+import android.content.pm.ApplicationInfo
+import org.koin.core.context.GlobalContext
+import pe.edu.upeu.pharmamobil.domain.port.Telemetria
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        val telemetria = GlobalContext.get().get<Telemetria>()
+
+        val esDepuracion =
+            (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
         val gestor = GestorPermisosAndroid(
             this,
@@ -46,6 +54,27 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 Box(Modifier.fillMaxSize()) {
                     App()
+
+                    if (esDepuracion) {
+                        Button(
+                            onClick = {
+                                telemetria.registrarError(
+                                    IllegalStateException(
+                                        "Prueba controlada de Crashlytics"
+                                    ),
+                                    mapOf(
+                                        "pantalla" to "MainActivity",
+                                        "operacion" to "verificacion_sesion13"
+                                    )
+                                )
+                            },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(16.dp)
+                        ) {
+                            Text("Probar Crashlytics")
+                        }
+                    }
 
                     if (mostrarPermisos) {
                         Surface(Modifier.fillMaxSize()) {
