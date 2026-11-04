@@ -19,8 +19,15 @@ import pe.upeu.agrosierra.data.remote.mensajeParaUsuario
 sealed interface AgroUiState {
     data object Listo : AgroUiState
     data object Cargando : AgroUiState
-    data class Exito(val mensaje: String) : AgroUiState
-    data class Error(val mensaje: String, val campos: Map<String, String> = emptyMap()) : AgroUiState
+
+    data class Exito(
+        val mensaje: String
+    ) : AgroUiState
+
+    data class Error(
+        val mensaje: String,
+        val campos: Map<String, String> = emptyMap()
+    ) : AgroUiState
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -32,49 +39,32 @@ class AgroViewModel(
     private val sincronizarAgro: SincronizarAgroUseCase
 ) : ViewModel() {
 
-    // La primera conexion carga datos; volver desde sin red sincroniza pendientes.
-    init {
-        viewModelScope.launch {
-            conectividad.observar()
-                .distinctUntilChanged()
-                .filter { it }
-                .collect { sincronizarInternamente() }
-        }
-    }
-
-    private suspend fun sincronizarInternamente() {
-        _estado.value = AgroUiState.Cargando
-        try {
-            val resultado = sincronizarAgro()
-            _estado.value = AgroUiState.Exito(
-                "Enviados: ${resultado.enviados}, lotes: ${resultado.lotesRecibidos}, " +
-                    "labores: ${resultado.laboresRecibidas}"
-            )
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: ErrorAgroException) {
-            val campos = (e.detalle as? ErrorApi.Validacion)?.errores.orEmpty()
-            _estado.value = AgroUiState.Error(e.detalle.mensajeParaUsuario(), campos)
-        } catch (e: Exception) {
-            _estado.value = AgroUiState.Error(
-                e.message ?: "No se pudo sincronizar; los datos locales siguen disponibles"
-            )
-        }
-    }
+    // ==========================================
+    // 1. ESTADOS Y FILTROS
+    // ==========================================
 
     private val busqueda = MutableStateFlow("")
     private val valle = MutableStateFlow("")
     private val soloAbiertas = MutableStateFlow(false)
 
+    // IMPORTANTE:
+    // Inicializar antes de ejecutar el bloque init.
     private val _estado =
         MutableStateFlow<AgroUiState>(AgroUiState.Listo)
 
     val estado: StateFlow<AgroUiState> =
         _estado.asStateFlow()
 
+    // ==========================================
+    // 2. LISTADO DE LOTES
+    // ==========================================
+
     val lotes: StateFlow<List<Lote>> =
-        combine(busqueda, valle, soloAbiertas) {
-                texto, v, abiertas ->
+        combine(
+            busqueda,
+            valle,
+            soloAbiertas
+        ) { texto, v, abiertas ->
             Triple(texto, v, abiertas)
         }.flatMapLatest { (texto, v, abiertas) ->
             buscarLotes(texto, v, abiertas)
@@ -84,6 +74,10 @@ class AgroViewModel(
             emptyList()
         )
 
+    // ==========================================
+    // 3. ULTIMA SINCRONIZACION
+    // ==========================================
+
     val ultimaSincronizacion: StateFlow<Long?> =
         repo.observarUltimaSincronizacion()
             .stateIn(
@@ -92,6 +86,10 @@ class AgroViewModel(
                 null
             )
 
+    // ==========================================
+    // 4. PENDIENTES POR LOTE
+    // ==========================================
+
     val pendientesPorLote: StateFlow<Map<Long, Long>> =
         repo.observarPendientesPorLotes()
             .stateIn(
@@ -99,6 +97,66 @@ class AgroViewModel(
                 SharingStarted.WhileSubscribed(5000),
                 emptyMap()
             )
+
+    // ==========================================
+    // 5. SINCRONIZACION AUTOMATICA
+    // ==========================================
+
+    // CORRECCION:
+    // El init se ejecuta despues de inicializar
+    // todos los StateFlow anteriores.
+
+    init {
+        viewModelScope.launch {
+            conectividad.observar()
+                .distinctUntilChanged()
+                .filter { it }
+                .collect {
+                    sincronizarInternamente()
+                }
+        }
+    }
+
+    // ==========================================
+    // 6. PROCESO INTERNO DE SINCRONIZACION
+    // ==========================================
+
+    private suspend fun sincronizarInternamente() {
+        _estado.value = AgroUiState.Cargando
+
+        try {
+            val resultado = sincronizarAgro()
+
+            _estado.value = AgroUiState.Exito(
+                "Enviados: ${resultado.enviados}, " +
+                        "lotes: ${resultado.lotesRecibidos}, " +
+                        "labores: ${resultado.laboresRecibidas}"
+            )
+
+        } catch (e: CancellationException) {
+            throw e
+
+        } catch (e: ErrorAgroException) {
+            val campos =
+                (e.detalle as? ErrorApi.Validacion)
+                    ?.errores.orEmpty()
+
+            _estado.value = AgroUiState.Error(
+                e.detalle.mensajeParaUsuario(),
+                campos
+            )
+
+        } catch (e: Exception) {
+            _estado.value = AgroUiState.Error(
+                e.message
+                    ?: "No se pudo sincronizar; los datos locales siguen disponibles"
+            )
+        }
+    }
+
+    // ==========================================
+    // 7. FILTROS DE BUSQUEDA
+    // ==========================================
 
     fun cambiarBusqueda(texto: String) {
         busqueda.value = texto
@@ -112,11 +170,23 @@ class AgroViewModel(
         soloAbiertas.value = valor
     }
 
-    fun observarLabores(loteId: Long): Flow<List<Labor>> =
+    // ==========================================
+    // 8. OBSERVAR LABORES Y PENDIENTES
+    // ==========================================
+
+    fun observarLabores(
+        loteId: Long
+    ): Flow<List<Labor>> =
         repo.observarLabores(loteId)
 
-    fun contarPendientes(loteId: Long): Flow<Long> =
+    fun contarPendientes(
+        loteId: Long
+    ): Flow<Long> =
         repo.contarPendientes(loteId)
+
+    // ==========================================
+    // 9. REGISTRAR LABOR
+    // ==========================================
 
     fun registrar(labor: Labor) {
         ejecutar {
@@ -125,6 +195,10 @@ class AgroViewModel(
         }
     }
 
+    // ==========================================
+    // 10. CORREGIR LABOR
+    // ==========================================
+
     fun corregir(labor: Labor) {
         ejecutar {
             repo.corregir(labor)
@@ -132,12 +206,20 @@ class AgroViewModel(
         }
     }
 
+    // ==========================================
+    // 11. ELIMINAR LABOR
+    // ==========================================
+
     fun eliminar(id: Long) {
         ejecutar {
             repo.eliminar(id)
             "Labor eliminada"
         }
     }
+
+    // ==========================================
+    // 12. CERRAR CAMPAÑA
+    // ==========================================
 
     fun cerrarCampania(id: Long) {
         ejecutar {
@@ -147,13 +229,27 @@ class AgroViewModel(
         }
     }
 
+    // ==========================================
+    // 13. SINCRONIZACION MANUAL
+    // ==========================================
+
     fun sincronizar() {
-        viewModelScope.launch { sincronizarInternamente() }
+        viewModelScope.launch {
+            sincronizarInternamente()
+        }
     }
+
+    // ==========================================
+    // 14. LIMPIAR MENSAJES
+    // ==========================================
 
     fun limpiarMensaje() {
         _estado.value = AgroUiState.Listo
     }
+
+    // ==========================================
+    // 15. EJECUTAR OPERACIONES
+    // ==========================================
 
     private fun ejecutar(
         operacion: suspend () -> String
@@ -164,14 +260,24 @@ class AgroViewModel(
             try {
                 _estado.value =
                     AgroUiState.Exito(operacion())
+
             } catch (e: CancellationException) {
                 throw e
+
             } catch (e: ErrorAgroException) {
-                val campos = (e.detalle as? ErrorApi.Validacion)?.errores.orEmpty()
-                _estado.value = AgroUiState.Error(e.detalle.mensajeParaUsuario(), campos)
+                val campos =
+                    (e.detalle as? ErrorApi.Validacion)
+                        ?.errores.orEmpty()
+
+                _estado.value = AgroUiState.Error(
+                    e.detalle.mensajeParaUsuario(),
+                    campos
+                )
+
             } catch (e: Exception) {
                 _estado.value = AgroUiState.Error(
-                    e.message ?: "No se pudo completar la operación"
+                    e.message
+                        ?: "No se pudo completar la operación"
                 )
             }
         }
