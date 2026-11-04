@@ -46,6 +46,8 @@ import pe.upeu.agrosierra.domain.usecase.BuscarLotesAgroUseCase
 import pe.upeu.agrosierra.domain.usecase.RegistrarLaborAgroUseCase
 import pe.upeu.agrosierra.domain.usecase.SincronizarAgroUseCase
 import pe.upeu.agrosierra.domain.platform.MonitorConectividad
+import pe.edu.upeu.pharmamobil.domain.port.Telemetria
+import pe.edu.upeu.pharmamobil.data.firebase.TelemetriaFirebase
 private const val CATEGORIA_POR_DEFECTO = 21L
 
 val dataModule = module {
@@ -64,6 +66,9 @@ val dataModule = module {
     single { AgroApi(get()) }
     single { AgroLocal(get()) }
     single<AgroRepositorio> { AgroRepositorioOffline(get(), get()) }
+    single<Telemetria> {
+        TelemetriaFirebase()
+    }
 }
 
 val domainModule = module {

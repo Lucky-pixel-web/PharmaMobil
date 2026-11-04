@@ -75,6 +75,8 @@ kotlin {
             implementation(libs.ktor.client.auth)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
+            implementation(libs.firebase.crashlytics)
+            implementation(libs.firebase.messaging)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
