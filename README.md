@@ -97,6 +97,26 @@ Compose (AgroCampoScreen)
 - `shared/src/commonTest/kotlin/pe/upeu/agrosierra/`: pruebas comunes de DTO, errores y sincronización.
 - `shared/src/androidHostTest/kotlin/pe/upeu/agrosierra/`: filtros, contador y fecha en SQLite.
 
+## Firma de entrega (release)
+
+La versión de entrega se firma con un almacén propio (`contreras.jks`) que **no está en el repositorio**. Las credenciales se leen desde `keystore.properties` en la raíz del proyecto, ignorado por Git:
+
+    storeFile=C:/ruta/a/contreras.jks
+    storePassword=********
+    keyAlias=contreras
+    keyPassword=********
+
+- `.gitignore` excluye `keystore.properties`, `*.jks` y `*.keystore`.
+- Sin ese archivo, el proyecto abre y compila en debug; solo el release exige las credenciales.
+- Huella SHA-256 del certificado: `46:B1:55:5A:1F:42:DD:C5:95:AC:6A:57:4D:69:56:FC:23:97:CC:A6:2C:8C:2A:25:BC:7C:26:16:27:0D:CF:47`
+- Versión: `versionCode 1`, `versionName 1.0.0`, `applicationId pe.edu.upeu.pharmamobil`.
+- Minificación (R8) activada: la app release se probó en un dispositivo real (TECNO KI5k, Android 12) y la serialización y Koin funcionan sin reglas adicionales.
+
+Generar los artefactos:
+
+    .\gradlew.bat :androidApp:bundleRelease     # .aab (entregable)
+    .\gradlew.bat :androidApp:assembleRelease   # .apk (pruebas)
+
 ## 6. Pruebas y evidencias a entregar
 
 Comprobar login, roles, paginación, crear/corregir/eliminar con permisos, filtro por valle y campañas abiertas sin internet, registro pendiente, reconexión sin duplicados, contador observable, fecha de última sincronización y validaciones. Guardar los resultados de pruebas y capturas en el **PDF de evidencias**, incluyendo el modo avión, login y rechazo por privilegios. Exportar por separado la colección Postman del backend.
