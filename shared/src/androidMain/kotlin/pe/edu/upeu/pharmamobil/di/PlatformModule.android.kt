@@ -23,7 +23,7 @@ import pe.upeu.agrosierra.platform.MonitorConectividadAndroid
 actual val platformModule: Module = module {
     single<HttpClientEngine> { OkHttp.create() }
     single<MonitorConectividad> { MonitorConectividadAndroid(androidContext()) }
-    single(named("urlBase")) { "http://10.0.2.2:8080/api/v1/" }
+    single(named("urlBase")) { "http://10.40.29.51:8080/api/v1/" }
     single<Compartidor> { CompartidorAndroid(androidContext()) }
     single<AlmacenSeguro> { AlmacenSeguroAndroid(androidContext()) }
     single<CreadorDeDriver> { CreadorDeDriverAndroid(androidContext()) }
