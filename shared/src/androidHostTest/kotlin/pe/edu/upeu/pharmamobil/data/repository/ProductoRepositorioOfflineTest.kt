@@ -14,6 +14,9 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 private class FakeProductoRemoto : ProductoRemoto {
+
+    var errorEnRegistro: ErrorApi? = null
+    var llamadasRegistro = 0
     val servidor = mutableListOf<Producto>()
     var sinConexion = false
     private var siguienteId = 100L
@@ -30,6 +33,9 @@ private class FakeProductoRemoto : ProductoRemoto {
 
     override suspend fun registrar(producto: Producto): Producto {
         red()
+        llamadasRegistro++
+        errorEnRegistro?.let { throw ErrorApiException(it) }
+
         val guardado = producto.copy(id = siguienteId++)
         servidor.add(guardado)
         return guardado
@@ -102,5 +108,48 @@ class ProductoRepositorioOfflineTest {
 
         assertEquals(1, local.pendientes().size)
         assertEquals(1, repositorio.observar().first().size)
+    }
+
+    @Test
+    fun falloTransitorioIncrementaIntentoYConservaPendiente() = runTest {
+        local.guardarPendiente(aspirina)
+        remoto.errorEnRegistro = ErrorApi.Servidor
+
+        repositorio.sincronizar()
+
+        val pendientes = local.pendientes(
+            ProductoRepositorioOffline.MAX_INTENTOS
+        )
+
+        val estado = local.observarEstadoEnvios(
+            ProductoRepositorioOffline.MAX_INTENTOS
+        ).first()
+
+        assertEquals(1, pendientes.size)
+        assertEquals(1, pendientes.single().intentos)
+        assertEquals(1, estado.pendientes)
+        assertEquals(0, estado.fallidas)
+    }
+
+    @Test
+    fun falloPermanenteMarcaFallidaYSinReintentos() = runTest {
+        local.guardarPendiente(aspirina)
+        remoto.errorEnRegistro =
+            ErrorApi.Conflicto("Registro duplicado")
+
+        repositorio.sincronizar()
+
+        val estado = local.observarEstadoEnvios(
+            ProductoRepositorioOffline.MAX_INTENTOS
+        ).first()
+
+        assertEquals(0, estado.pendientes)
+        assertEquals(1, estado.fallidas)
+        assertEquals(1, remoto.llamadasRegistro)
+
+        remoto.errorEnRegistro = null
+        repositorio.sincronizar()
+
+        assertEquals(1, remoto.llamadasRegistro)
     }
 }
