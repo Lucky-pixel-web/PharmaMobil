@@ -21,3 +21,5 @@ node_modules/
 keystore.properties
 *.jks
 *.keystore
+# Configuración de Firebase (servicio externo, nunca en Git)
+androidApp/google-services.json
