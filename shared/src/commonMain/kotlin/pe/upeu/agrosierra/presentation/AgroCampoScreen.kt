@@ -526,7 +526,7 @@ private fun DetalleAgro(
                     }
 
                     // CORREGIR LABOR
-                    if (sesion.puede("LABOR_EDITAR")) {
+                    if (sesion.puede("LABOR_EDITAR") && !lote.campaniaCerrada) {
                         TextButton(
                             onClick = {
                                 edicion = labor
